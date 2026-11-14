@@ -1,12 +1,13 @@
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from backend.app.services.analyzer import analyze_document
 from backend.app.rag.answer import answer_question
+from backend.app.api.auth import require_user
 
 qa_router = APIRouter(prefix="/api/v1", tags=["question answering"])
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 @qa_router.post("/ask")
-async def ask_contract(question: str = Form(...), file: UploadFile = File(...), enable_ocr: bool = False):
+async def ask_contract(question: str = Form(...), file: UploadFile = File(...), enable_ocr: bool = False, user: dict = Depends(require_user)):
     filename = file.filename or "contract"
     if not filename.lower().endswith((".pdf", ".docx")):
         raise HTTPException(status_code=415, detail="Only PDF and DOCX files are supported.")

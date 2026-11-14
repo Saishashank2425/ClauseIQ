@@ -92,7 +92,7 @@ def test_golden_50_pipeline_retrieval_and_citation_gates(monkeypatch):
     cases = [json.loads(line) for line in dataset.read_text(encoding="utf-8").splitlines() if line.strip()]
 
     def deterministic_cited_response(messages):
-        cited_sources = re.findall(r"\\[(C\\d{4}), page (\\d+)\\]", messages[-1]["content"])
+        cited_sources = re.findall(r"\[(C\d{4}), page (\d+)\]", messages[-1]["content"])
         citations = " ".join(f"[{clause_id}, page {page}]" for clause_id, page in cited_sources)
         return {
             "text": "Sources: " + citations,

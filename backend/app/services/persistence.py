@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.models import DocumentRecord, ClauseRecord, TenantMembership
 from backend.app.schemas.analysis import DocumentAnalysis
+from backend.app.retrieval.embeddings import embed_texts
 
 
 def persist_analysis(
@@ -65,6 +66,7 @@ def persist_analysis(
         is_current=True,
         supersedes_document_id=supersedes_document_id,
     )
+    vectors = embed_texts([clause.text for clause in analysis.clauses])
     record.clauses = [
         ClauseRecord(
             clause_id=clause.clause_id,
@@ -73,8 +75,9 @@ def persist_analysis(
             category=clause.category,
             risk_level=clause.risk_level,
             risk_flags_json=json.dumps(clause.risk_flags),
+            embedding=vectors[index] if vectors is not None else None,
         )
-        for clause in analysis.clauses
+        for index, clause in enumerate(analysis.clauses)
     ]
 
     # Bootstrap only the verified user's private workspace membership.

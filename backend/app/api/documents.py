@@ -10,6 +10,7 @@ from backend.app.api.auth import require_user
 from backend.app.database.session import get_db
 from backend.app.models import ClauseRecord, DocumentRecord
 from backend.app.retrieval.authorized import (
+    authorized_clauses_query,
     authorized_documents_query,
     search_authorized_hybrid,
 )
@@ -53,13 +54,10 @@ def get_document_clauses(
 ):
     """Fetch clauses only after tenant, role, direct ACL and version filters run in SQL."""
     rows = (
-        search_authorized_hybrid(
-            db,
-            str(user["id"]),
-            query_text="contract clauses",
-            limit=50,
-            document_id=document_id,
-        )
+        authorized_clauses_query(db, str(user["id"]), document_id=document_id)
+        .order_by(ClauseRecord.id.asc())
+        .limit(500)
+        .all()
     )
     if not rows:
         raise HTTPException(status_code=404, detail="Document not found.")
@@ -95,8 +93,17 @@ def ask_saved_document(
         document_id=document_id,
     )
     if not rows:
+        # Dense/lexical candidate search may be empty for an exact but unusual phrase.
+        # Fall back to the authorized document's clauses; ACLs still run in SQL.
+        rows = (
+            authorized_clauses_query(db, str(user["id"]), document_id=document_id)
+            .order_by(ClauseRecord.id.asc())
+            .limit(500)
+            .all()
+        )
+    if not rows:
         # Do not reveal whether an inaccessible document ID exists.
-        raise HTTPException(status_code=404, detail="Document not found or no matching evidence.")
+        raise HTTPException(status_code=404, detail="Document not found.")
     clauses = [
         ClauseResult(
             clause_id=row.clause_id,

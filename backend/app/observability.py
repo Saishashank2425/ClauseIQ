@@ -26,3 +26,18 @@ def trace_observation(name: str, metadata: dict[str, Any] | None = None) -> Iter
         return
     with observation as span:
         yield span
+
+
+def update_observation(observation: Any, metadata: dict[str, Any]) -> None:
+    """Attach aggregate request metrics without sending questions or contract text."""
+    if observation is None:
+        return
+    safe_metadata = {
+        str(key): value
+        for key, value in metadata.items()
+        if value is not None and isinstance(value, (str, int, float, bool))
+    }
+    try:
+        observation.update(metadata=safe_metadata)
+    except Exception as exc:
+        logger.warning("Langfuse metric update failed (%s)", type(exc).__name__)

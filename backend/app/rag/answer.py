@@ -29,13 +29,24 @@ CONCEPTS = {
     "termination": {"termination", "terminate", "terminated", "notice", "cure", "breach"},
     "renewal": {"renewal", "renew", "automatically", "non-renewal", "expiry", "term"},
     "confidentiality": {"confidentiality", "confidential", "trade secret", "disclose", "disclosure"},
-    "governing_law": {"governing law", "jurisdiction", "venue", "courts", "law"},
+    "governing_law": {"governing law", "jurisdiction", "venue", "court", "courts", "law", "sue", "suit", "lawsuit"},
     "payment": {"payment", "invoice", "late fee", "penalty", "interest", "overdue"},
 }
 
 
 def _tokens(value: str) -> set[str]:
     return {token for token in WORD_RE.findall(value.lower()) if len(token) > 2}
+
+
+def _expand_retrieval_query(question: str) -> str:
+    """Add legal-domain aliases for concepts explicitly named in the question."""
+    lowered = question.lower()
+    expansions = []
+    for concept, aliases in CONCEPTS.items():
+        if concept.replace("_", " ") in lowered or any(alias in lowered for alias in aliases):
+            expansions.append(concept.replace("_", " "))
+            expansions.extend(sorted(aliases))
+    return " ".join([question, *expansions])
 
 
 def _evidence_sufficiency(question: str, evidence: list[dict[str, Any]]) -> tuple[bool, float, list[str]]:
@@ -110,7 +121,7 @@ def answer_question(question: str, clauses: list[ClauseResult], top_k: int = 4) 
     ]
     with trace_observation("clauseiq.rag.request", {"pipeline": "bm25_tfidf_rrf_optional_dense_cross_encoder", "clause_count": len(clauses)}):
         retriever = HybridRetriever(retrieval_docs)
-        ranked = retriever.search(question, top_k=top_k)
+        ranked = retriever.search(_expand_retrieval_query(question), top_k=top_k)
         if not ranked:
             return {
                 "answer": "I cannot find supporting evidence in the selected document, so I will not guess.",

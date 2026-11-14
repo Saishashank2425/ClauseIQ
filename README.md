@@ -4,7 +4,7 @@
 
 ClauseIQ is a research and engineering project for extracting contract content, identifying legal clauses, surfacing risk indicators, and answering questions with evidence-linked citations.
 
-> Status: Phase 1 — foundation in progress. Features are implemented incrementally; the README will be updated as each phase is completed.
+> Status: Working prototype. Document ingestion, rule-based review indicators, BM25 retrieval, evidence-returning Q&A, and a React review dashboard are implemented. Trained legal models, full hybrid retrieval, LLM reasoning, and durable document workflows remain in progress.
 
 ## Planned capabilities
 

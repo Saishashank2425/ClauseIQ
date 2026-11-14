@@ -6,7 +6,7 @@ import re
 import time
 from typing import Any
 
-from backend.app.observability import trace_observation
+from backend.app.observability import trace_observation, update_observation
 from backend.app.rag.providers import generate
 from backend.app.retrieval.hybrid import HybridRetriever
 from backend.app.schemas.analysis import ClauseResult
@@ -106,6 +106,31 @@ def _citations_are_valid(answer: str, evidence: list[dict[str, Any]]) -> bool:
     return True
 
 
+def _record_answer_observation(observation: Any, result: dict[str, Any]) -> None:
+    """Record outcome and performance fields only; never include prompt or answer text."""
+    usage = result.get("usage") or {}
+    metadata: dict[str, Any] = {
+        "mode": result.get("mode"),
+        "abstained": bool(result.get("abstained", False)),
+        "citationValid": bool(not result.get("abstained", False) and result.get("mode") == "grounded_llm"),
+        "latencyMs": result.get("latency_ms"),
+        "retrievalCoverage": result.get("retrieval_coverage"),
+        "provider": result.get("provider"),
+        "model": result.get("model"),
+    }
+    token_fields = {
+        "inputTokens": ("prompt_tokens", "input_tokens"),
+        "outputTokens": ("completion_tokens", "output_tokens"),
+        "totalTokens": ("total_tokens",),
+    }
+    if isinstance(usage, dict):
+        for target, keys in token_fields.items():
+            value = next((usage.get(key) for key in keys if usage.get(key) is not None), None)
+            if isinstance(value, (int, float)):
+                metadata[target] = value
+    update_observation(observation, metadata)
+
+
 def answer_question(question: str, clauses: list[ClauseResult], top_k: int = 4) -> dict:
     started = time.perf_counter()
     if not question.strip():
@@ -119,15 +144,17 @@ def answer_question(question: str, clauses: list[ClauseResult], top_k: int = 4) 
         " ".join([c.text, c.category, " ".join(c.risk_flags), c.explanation])
         for c in clauses
     ]
-    with trace_observation("clauseiq.rag.request", {"pipeline": "bm25_tfidf_rrf_optional_dense_cross_encoder", "clause_count": len(clauses)}):
+    with trace_observation("clauseiq.rag.request", {"pipeline": "bm25_tfidf_rrf_optional_dense_cross_encoder", "clauseCount": len(clauses)}) as observation:
         retriever = HybridRetriever(retrieval_docs)
         ranked = retriever.search(_expand_retrieval_query(question), top_k=top_k)
         if not ranked:
-            return {
+            response = {
                 "answer": "I cannot find supporting evidence in the selected document, so I will not guess.",
                 "abstained": True, "evidence": [], "mode": "unsupported",
                 "latency_ms": round((time.perf_counter() - started) * 1000, 2),
             }
+            _record_answer_observation(observation, response)
+            return response
 
         evidence = []
         for idx, score in ranked:
@@ -144,12 +171,14 @@ def answer_question(question: str, clauses: list[ClauseResult], top_k: int = 4) 
 
         supported, coverage, matched_concepts = _evidence_sufficiency(question, evidence)
         if not supported:
-            return {
+            response = {
                 "answer": "The retrieved passages do not directly support this question. I cannot answer without guessing.",
                 "abstained": True, "evidence": evidence, "mode": "unsupported",
                 "retrieval_coverage": coverage,
                 "latency_ms": round((time.perf_counter() - started) * 1000, 2),
             }
+            _record_answer_observation(observation, response)
+            return response
 
         messages = [
             {"role": "system", "content": (
@@ -176,16 +205,20 @@ def answer_question(question: str, clauses: list[ClauseResult], top_k: int = 4) 
                 if status == "no_free_provider_configured"
                 else "The answer could not be generated or did not pass citation validation. Retrieved evidence is shown below; no answer was generated."
             )
-            return {
+            response = {
                 "answer": message, "abstained": True, "evidence": evidence, "mode": status,
                 "provider": result.get("provider"), "model": result.get("model"),
                 "retrieval_coverage": coverage,
                 "latency_ms": round((time.perf_counter() - started) * 1000, 2),
             }
-        return {
+            _record_answer_observation(observation, response)
+            return response
+        response = {
             "answer": generated, "abstained": False, "evidence": evidence, "mode": "grounded_llm",
             "provider": result.get("provider"), "model": result.get("model"),
             "usage": result.get("usage", {}), "retrieval_coverage": coverage,
             "matched_concepts": matched_concepts,
             "latency_ms": round((time.perf_counter() - started) * 1000, 2),
         }
+        _record_answer_observation(observation, response)
+        return response

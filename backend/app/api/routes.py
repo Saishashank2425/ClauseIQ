@@ -28,6 +28,8 @@ async def analyze_contract(file: UploadFile = File(...), enable_ocr: bool = Fals
                 db.rollback()
                 raise HTTPException(status_code=503, detail="Persistence failed. Check DATABASE_URL and initialize the database.") from exc
         return analysis
+    except HTTPException:
+        raise
     except (ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:

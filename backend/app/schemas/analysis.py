@@ -13,6 +13,7 @@ class ClauseResult(BaseModel):
 
 class DocumentAnalysis(BaseModel):
     filename: str
+    document_id: int | None = None
     pages: int
     word_count: int
     clauses: list[ClauseResult]

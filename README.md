@@ -1,78 +1,75 @@
 # ClauseIQ
 
-**AI-powered legal contract intelligence and risk analysis.**
+**Evidence-first AI contract intelligence and review workspace.**
 
-ClauseIQ is a research and engineering project for extracting contract content, identifying legal clauses, surfacing risk indicators, and answering questions with evidence-linked citations.
+ClauseIQ is a research prototype that extracts contract text, segments clauses, surfaces explainable review indicators, retrieves supporting passages, and optionally generates answers constrained to retrieved evidence.
 
-> Status: Phase 1 — foundation in progress. Features are implemented incrementally; the README will be updated as each phase is completed.
+## Features
+- PDF and DOCX extraction with optional Tesseract OCR for scanned PDFs.
+- Clause segmentation with PDF page provenance.
+- Explainable phrase-based risk review indicators.
+- Trainable TF-IDF + LinearSVC baseline and optional Legal-BERT fine-tuning/inference.
+- BM25 + TF-IDF retrieval, optional FAISS dense embeddings and cross-encoder reranking.
+- Evidence-first Q&A with clause citation validation, extractive fallback and abstention.
+- React/Vite dashboard and FastAPI API.
+- PostgreSQL + pgvector schema for persistent clauses, embeddings, version history and tenant permissions.
+- SQL-first document authorization, saved-document APIs, Alembic migrations and Docker Compose.
 
-## Planned capabilities
-
-- PDF, DOCX, and OCR-based document ingestion
-- Clause segmentation and classification using CUAD-derived data
-- Contractual entailment experiments using ContractNLI
-- Rule-based risk indicators with explainable evidence
-- Hybrid semantic and lexical retrieval (FAISS + BM25)
-- Evidence-grounded RAG with page-level citations and abstention
-- FastAPI backend, React dashboard, and PostgreSQL persistence
-- Evaluation, experiment tracking, containerization, and CI
-
-## Development roadmap
-
-1. Environment and project foundation
-2. CUAD and ContractNLI dataset preparation
-3. Document processing and clause segmentation
-4. ML classification and risk analysis
-5. Hybrid retrieval and reranking
-6. Evidence-grounded RAG
-7. API, dashboard, and database integration
-8. Evaluation, deployment, and demonstration
-
-## Repository structure
-
-```text
-backend/
-  app/
-    api/
-    core/
-    database/
-    ingestion/
-    ml/
-    models/
-    preprocessing/
-    rag/
-    retrieval/
-    risk/
-  tests/
-docs/
-datasets/                 # Dataset files are not committed
-```
-
-## Quick start
-
-Use Python 3.13 in a virtual environment.
-
-```bash
+## Quick start (Python 3.13)
+```powershell
 python -m venv venv
-# Windows
-venv\\Scripts\\activate
-# macOS/Linux
-source venv/bin/activate
-
+.\venv\Scripts\activate
 python -m pip install -r requirements.txt
 uvicorn backend.app.main:app --reload
 ```
+API docs: `http://127.0.0.1:8000/docs`.
 
-The API health endpoint will be available at `/health` and interactive API documentation at `/docs`.
+In a second terminal:
+```powershell
+cd frontend
+npm install
+$env:VITE_API_BASE_URL="http://127.0.0.1:8000"
+npm run dev
+```
 
-## Data and licensing
+## Optional ML/research stack
+```powershell
+python -m pip install -r requirements-ml.txt
+```
+Download CUAD and ContractNLI from their original sources, follow their terms, and place source files under `datasets/raw/`. Then normalize:
+```powershell
+python scripts/prepare_datasets.py --cuad datasets/raw/cuad.json --contractnli datasets/raw/contractnli.json
+python scripts/train_clause_classifier.py
+python scripts/train_legalbert.py --epochs 2
+```
+Enable optional model components with environment variables documented in `.env.example`. Research workflow and limitations are in `docs/PHASES.md`.
 
-CUAD and ContractNLI are external research datasets. Follow each dataset's original license, terms, and citation requirements. Dataset files, private contracts, credentials, and local environment files must not be committed.
+## Database
+Configure `DATABASE_URL`, then apply migrations:
+```powershell
+alembic upgrade head
+```
+The analyze endpoint persists only when explicitly called with `?persist=true`.
 
-## Security
+## Docker
+```powershell
+docker compose up --build
+```
+The compose file starts pgvector-enabled PostgreSQL and the API. Apply database migrations in the API container before using persistence.
 
-Never commit API keys, passwords, private contracts, database dumps, or `.env` files. Use `.env.example` only for non-secret configuration templates.
+## Deployment
+See `docs/DEPLOYMENT.md` for separate Vercel frontend/API setup and Docker hosting guidance.
+
+## Important limitations
+- The repository does not include external datasets, trained weights, private contracts or measured benchmark scores.
+- Risk flags are heuristic review prompts, not legal conclusions.
+- Legal-BERT and dense retrieval require optional dependencies, downloaded model weights and actual training/evaluation.
+- Grounded LLM generation is optional and requires an OpenAI-compatible endpoint configured via environment variables.
+- DOCX pagination is not reliably available through python-docx.
+- Vercel serverless is suitable only for small demo documents; large uploads, OCR and model inference should use persistent container/worker hosting.
+- The initial workspace is private to the verified Google subject. Team membership and per-document grants are database-backed, but a trusted team-administration UI/workflow is still required before enabling shared workspaces.
+- Embeddings are optional and require the sentence-transformers extra plus a configured 384-dimensional model. A pgvector column/index and authorized vector-search query are included; vector ranking is unavailable until embeddings have been generated.
+- Malware scanning, production rate limiting, restrictive CORS, audit logging, backups and formal privacy controls are still required before handling confidential customer contracts.
 
 ## Disclaimer
-
-ClauseIQ is an educational/research decision-support prototype, not a substitute for qualified legal advice. Model outputs and risk flags require human review.
+ClauseIQ is an educational/research decision-support prototype, not legal advice. Outputs require review by qualified counsel.

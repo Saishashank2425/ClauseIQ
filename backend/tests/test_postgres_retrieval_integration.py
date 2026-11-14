@@ -28,6 +28,8 @@ def test_postgres_vector_and_hybrid_search_keep_acl_in_sql(monkeypatch):
     tenant_id = "tenant-" + suffix
     private_tenant_id = "private-" + suffix
     subject_id = "reviewer-" + suffix
+    allowed_group_id = str(uuid.uuid4())
+    private_group_id = str(uuid.uuid4())
     query_vector = [1.0] + [0.0] * 383
 
     try:
@@ -37,7 +39,7 @@ def test_postgres_vector_and_hybrid_search_keep_acl_in_sql(monkeypatch):
                 sha256=(suffix + "a").ljust(64, "0")[:64],
                 tenant_id=tenant_id,
                 owner_id="owner-" + suffix,
-                version_group_id="allowed-" + suffix,
+                version_group_id=allowed_group_id,
                 version_number=1,
                 is_current=True,
             )
@@ -57,7 +59,7 @@ def test_postgres_vector_and_hybrid_search_keep_acl_in_sql(monkeypatch):
                 sha256=(suffix + "b").ljust(64, "0")[:64],
                 tenant_id=private_tenant_id,
                 owner_id="other-" + suffix,
-                version_group_id="private-" + suffix,
+                version_group_id=private_group_id,
                 version_number=1,
                 is_current=True,
             )

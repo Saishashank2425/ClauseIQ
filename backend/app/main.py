@@ -1,5 +1,9 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend.app.core.config import get_settings
 from backend.app.api.routes import router as analysis_router
@@ -14,11 +18,10 @@ app = FastAPI(
     debug=settings.debug,
 )
 
-
 app.include_router(analysis_router)
 app.include_router(qa_router)
 
-# Public, cookie-free API for the separately hosted demo frontend.
+# Keep CORS enabled for local development and optional separate frontends.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,9 +30,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# In the Render Docker deployment, the Vite build is copied into this directory.
+# Serving the UI and API from one origin avoids a manually configured API URL.
+frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+frontend_index = frontend_dist / "index.html"
+frontend_assets = frontend_dist / "assets"
+if frontend_assets.is_dir():
+    app.mount("/assets", StaticFiles(directory=frontend_assets), name="frontend-assets")
+
 
 @app.get("/", tags=["system"])
-def root() -> dict[str, str]:
+def root():
+    if frontend_index.is_file():
+        return FileResponse(frontend_index)
     return {
         "name": settings.app_name,
         "status": "running",

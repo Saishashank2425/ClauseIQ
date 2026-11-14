@@ -27,4 +27,4 @@ COPY alembic.ini .
 COPY --from=frontend-build /frontend/dist ./frontend/dist
 
 EXPOSE 10000
-CMD ["sh", "-c", "uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
+CMD ["sh", "-c", "if [ -n \"${DATABASE_URL:-}\" ]; then echo \"Applying ClauseIQ database migrations\"; alembic upgrade head; fi; exec uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-10000}"]

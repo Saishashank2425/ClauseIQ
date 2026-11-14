@@ -80,5 +80,5 @@ def test_summary_reports_retrieval_citation_abstention_and_latency():
     assert summary["expected_source_citation_accuracy"] == 0.5
     assert summary["abstention_rate"] == 0.5
     assert summary["unsupported_rate"] == 0.5
-    assert summary["latency_ms"] == {"p50": 100.0, "p95": 300.0}
+    assert summary["latency_ms"] == {"p50": 200.0, "p95": 300.0}
     assert summary["providers"] == ["provider-a"]

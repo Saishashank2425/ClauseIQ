@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from backend.app.ingestion.extract import ExtractedPage
 
-HEADING = re.compile(r"(?im)^\s*((?:\d+(?:\.\d+)*[.)]?|[A-Z](?:\.|\))|ARTICLE\s+[IVXLC]+|SECTION\s+\d+(?:\.\d+)*)\s+.{2,120}$")
+HEADING = re.compile(r"(?im)^\s*(?:\d+(?:\.\d+)*[.)]?|[A-Z][.)]|ARTICLE\s+[IVXLC]+|SECTION\s+\d+(?:\.\d+)*)\s+.{2,120}$")
 
 @dataclass
 class Clause:

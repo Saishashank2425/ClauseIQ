@@ -67,5 +67,10 @@ Use **Explore sample contract** in the app or call `GET /api/v1/demo` to load a 
 
 OCR requires the Tesseract executable installed on the host. The Python package alone is not the OCR engine.
 
+## Persistence and access-control status
+Persisted document analysis is opt-in through `POST /api/v1/analyze?persist=true` and requires a configured PostgreSQL `DATABASE_URL`. The schema stores clause embeddings in pgvector when `CLAUSEIQ_DENSE_MODEL` is enabled. Apply Alembic migrations before using persisted endpoints; the container startup applies them when a database URL is configured.
+
+Google ID tokens are verified server-side. Persisted document reads apply tenant membership, owner/document grants, and current-version filters in SQL before returning clauses. A first upload creates a private personal tenant. Team membership, role grants, and document sharing currently require trusted database administration; the app does not yet provide a team administration UI. Public demo data is synthetic and separate from persisted private documents.
+
 ## Production checklist
-Tenant isolation, restrictive CORS, rate limiting, malware scanning, private object storage, audit logging, retention/deletion controls, secret rotation, database backups and expert-reviewed model evaluation are not included in this educational prototype. Google sign-in verifies identity but does not yet provide organization membership, role-based access or tenant-level authorization. Do not treat this research demo as production legal infrastructure.
+Before handling confidential contracts, add restrictive CORS, rate limits, malware scanning, private object storage, audit logging, retention/deletion controls, secret rotation, and a durable database plan with backups. Run the golden-set and expert-reviewed evaluations against the production provider configuration; the checked-in dataset is synthetic and does not establish legal accuracy. Do not treat this research demo as production legal infrastructure.

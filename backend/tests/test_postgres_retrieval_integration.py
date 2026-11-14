@@ -18,7 +18,6 @@ from backend.app.retrieval.authorized import (
 )
 
 
-@pytest.mark.integration
 def test_postgres_vector_and_hybrid_search_keep_acl_in_sql(monkeypatch):
     database_url = os.getenv("CLAUSEIQ_TEST_DATABASE_URL")
     if not database_url:

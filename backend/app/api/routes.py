@@ -4,13 +4,14 @@ from backend.app.database.session import get_db
 from backend.app.services.persistence import persist_analysis
 from backend.app.schemas.analysis import DocumentAnalysis
 from backend.app.services.analyzer import analyze_document
+from backend.app.api.auth import require_user
 
 router = APIRouter(prefix="/api/v1", tags=["analysis"])
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 
 @router.post("/analyze", response_model=DocumentAnalysis)
-async def analyze_contract(file: UploadFile = File(...), enable_ocr: bool = False, persist: bool = False, db: Session = Depends(get_db)) -> DocumentAnalysis:
+async def analyze_contract(file: UploadFile = File(...), enable_ocr: bool = False, persist: bool = False, db: Session = Depends(get_db), user: dict = Depends(require_user)) -> DocumentAnalysis:
     filename = file.filename or "contract"
     if not filename.lower().endswith((".pdf", ".docx")):
         raise HTTPException(status_code=415, detail="Only PDF and DOCX files are supported.")

@@ -10,6 +10,7 @@ from backend.app.api.routes import router as analysis_router
 from backend.app.api.qa import qa_router
 from backend.app.api.auth import router as auth_router
 from backend.app.api.demo import router as demo_router
+from backend.app.api.documents import documents_router
 
 settings = get_settings()
 
@@ -24,6 +25,7 @@ app.include_router(analysis_router)
 app.include_router(qa_router)
 app.include_router(auth_router)
 app.include_router(demo_router)
+app.include_router(documents_router)
 
 # Keep CORS enabled for local development and optional separate frontends.
 app.add_middleware(

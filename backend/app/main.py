@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.core.config import get_settings
 from backend.app.api.routes import router as analysis_router
@@ -16,6 +17,15 @@ app = FastAPI(
 
 app.include_router(analysis_router)
 app.include_router(qa_router)
+
+# Public, cookie-free API for the separately hosted demo frontend.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/", tags=["system"])

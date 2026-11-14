@@ -32,10 +32,14 @@ def update_observation(observation: Any, metadata: dict[str, Any]) -> None:
     """Attach aggregate request metrics without sending questions or contract text."""
     if observation is None:
         return
+    allowed_keys = {
+        "mode", "abstained", "citationValid", "latencyMs", "retrievalCoverage",
+        "provider", "model", "inputTokens", "outputTokens", "totalTokens",
+    }
     safe_metadata = {
-        str(key): value
+        str(key): (value[:180] if isinstance(value, str) else value)
         for key, value in metadata.items()
-        if value is not None and isinstance(value, (str, int, float, bool))
+        if key in allowed_keys and value is not None and isinstance(value, (str, int, float, bool))
     }
     try:
         observation.update(metadata=safe_metadata)

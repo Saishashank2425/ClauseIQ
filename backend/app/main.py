@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from backend.app.core.config import get_settings
 from backend.app.api.routes import router as analysis_router
+from backend.app.api.qa import qa_router
 
 settings = get_settings()
 
@@ -14,6 +15,7 @@ app = FastAPI(
 
 
 app.include_router(analysis_router)
+app.include_router(qa_router)
 
 
 @app.get("/", tags=["system"])

@@ -1,28 +1,32 @@
-# Implementation status
+# ClauseIQ implementation status
 
-## Implemented in this branch
-- Phase 1: FastAPI foundation, configuration, health routes, and CI.
-- Phase 2: local CUAD/ContractNLI normalization utility. Dataset files are not downloaded or committed.
-- Phase 3: PDF/DOCX extraction, optional PDF OCR, clause segmentation, page provenance where available.
-- Phase 4 baseline: explainable phrase-based risk flags and optional TF-IDF + LinearSVC clause-category training/inference.
-- Phase 5 baseline: BM25 + TF-IDF hybrid retrieval; optional cross-encoder reranking can be enabled with `CLAUSEIQ_CROSS_ENCODER_MODEL` when `sentence-transformers` and model weights are installed.
-- Phase 6 baseline: evidence-returning extractive Q&A with relevance threshold and abstention. This is not an LLM answer generator.
-- Phase 7 baseline: FastAPI endpoints, React/Vite dashboard, optional SQLAlchemy/PostgreSQL persistence, Vercel serverless entry point.
-- Phase 8 baseline: backend/frontend GitHub Actions CI and deployment documentation.
+## Implemented
+1. Foundation: FastAPI, settings, routes, tests and CI.
+2. Data preparation: CUAD/ContractNLI JSON normalization; raw datasets remain local.
+3. Ingestion: PDF/DOCX extraction, optional OCR, clause segmentation and PDF page provenance.
+4. ML/risk: explainable phrase indicators, TF-IDF + LinearSVC training, optional Legal-BERT fine-tuning and lazy inference.
+5. Retrieval: BM25 + TF-IDF, optional sentence-transformer dense embeddings with FAISS, optional cross-encoder reranking.
+6. RAG: evidence-first retrieval, optional OpenAI-compatible generation constrained to supplied passages, clause citation validation, extractive fallback and abstention.
+7. Application: React/Vite dashboard, FastAPI, optional PostgreSQL persistence and Alembic migration.
+8. Evaluation/deployment: classifier and retrieval evaluation, optional MLflow logging, Docker/Compose, Vercel configs and CI.
 
-## Remaining research and production work
-- Validate dataset normalization against the exact CUAD and ContractNLI releases used; build deterministic train/validation/test splits and dataset cards.
-- Train, tune, and evaluate the classifier; compare TF-IDF against Legal-BERT with macro-F1, per-class metrics, calibration, and error analysis.
-- Add neural dense embeddings (e.g. sentence-transformers + FAISS), measure retrieval recall@k/MRR, and evaluate cross-encoder reranking.
-- Add an LLM-backed answer generator that is constrained to retrieved evidence, emits page/section citations, and abstains when evidence is insufficient.
-- Add Alembic migrations, user/document access control, secure object storage, audit logging, rate limiting, and retention/deletion controls.
-- Add full integration/evaluation suites, ablations, MLflow tracking, Docker deployment, and production observability.
+## Research workflow
+- Install optional dependencies: `python -m pip install -r requirements-ml.txt`.
+- Normalize source files: `python scripts/prepare_datasets.py --cuad datasets/raw/cuad.json --contractnli datasets/raw/contractnli.json`.
+- Train classical baseline: `python scripts/train_clause_classifier.py`.
+- Fine-tune Legal-BERT: `python scripts/train_legalbert.py --epochs 2`.
+- Enable Legal-BERT inference: `CLAUSEIQ_CLASSIFIER_BACKEND=legalbert`.
+- Enable dense retrieval: `CLAUSEIQ_DENSE_MODEL=sentence-transformers/all-MiniLM-L6-v2`.
+- Enable reranking: `CLAUSEIQ_CROSS_ENCODER_MODEL=cross-encoder/ms-marco-MiniLM-L-6-v2`.
+- Configure grounded generation with `CLAUSEIQ_LLM_BASE_URL`, `CLAUSEIQ_LLM_MODEL`, and optional `CLAUSEIQ_LLM_API_KEY`.
+- Retrieval evaluation JSONL rows require `query`, `documents` (passages), and `relevant_indices` (relevant passage positions). Run `python scripts/evaluate_retrieval.py --input path/to/queries.jsonl`.
 
-## Important limitations
-- Risk flags are transparent heuristics, not legal conclusions or a trained risk model.
-- The optional classifier is a classical baseline and needs actual training/evaluation before it is useful.
-- DOCX page numbers are not reliable and are returned as null.
-- OCR requires the Tesseract executable installed on the host.
-- The Q&A endpoint returns source passages rather than generating a legal interpretation.
-- Database persistence is opt-in with `persist=true`; initialize PostgreSQL first with `python -m scripts.init_db`.
-- Vercel serverless is suitable for a lightweight demo API, not large OCR jobs, transformer inference, or long-running processing.
+## Remaining before production/legal use
+- Run experiments on licensed datasets and publish measured metrics; this repository does not claim model scores.
+- Verify dataset versions, licenses, label mapping, and train/validation/test split methodology.
+- Restrict CORS to the frontend domain; add authentication, authorization, rate limits, malware scanning, secure object storage, retention/deletion controls, audit logs and tenant isolation.
+- Evaluate generated answers against expert-labeled questions; citations alone do not prove correctness.
+- Run OCR/transformer workloads on a persistent worker, not constrained serverless functions.
+
+## Limitations
+Risk flags are heuristic review prompts, not legal conclusions. Models are not trained until the user downloads licensed data and runs the documented scripts. DOCX page numbers are unavailable via python-docx. Vercel serverless payload/runtime limits make Docker/persistent hosting preferable for larger contracts and optional ML inference.

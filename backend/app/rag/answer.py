@@ -29,7 +29,7 @@ CONCEPTS = {
     "termination": {"termination", "terminate", "terminated", "notice", "cure", "breach"},
     "renewal": {"renewal", "renew", "automatically", "non-renewal", "expiry", "term"},
     "confidentiality": {"confidentiality", "confidential", "trade secret", "disclose", "disclosure"},
-    "governing_law": {"governing law", "jurisdiction", "venue", "court", "courts", "law", "sue", "suit", "lawsuit"},
+    "governing_law": {"governing law", "jurisdiction", "venue", "court", "courts", "law", "sue", "suit", "lawsuit", "arbitration", "dispute resolution"},
     "payment": {"payment", "invoice", "late fee", "penalty", "interest", "overdue"},
 }
 

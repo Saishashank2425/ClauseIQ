@@ -1,7 +1,7 @@
-# Running and deploying ClauseIQ
+# Run and deploy ClauseIQ
 
-## Backend (local)
-Use Python 3.13:
+## Local development
+Use Python 3.13. Backend terminal:
 ```powershell
 python -m venv venv
 .\venv\Scripts\activate
@@ -10,47 +10,54 @@ uvicorn backend.app.main:app --reload
 ```
 Open `http://127.0.0.1:8000/docs`.
 
-## Frontend (local)
-In a second terminal:
+Frontend terminal:
 ```powershell
 cd frontend
 npm install
 $env:VITE_API_BASE_URL="http://127.0.0.1:8000"
 npm run dev
 ```
-Open the Vite URL shown in the terminal.
 
-## Vercel deployment
-Create two Vercel projects from this repository:
+## Vercel (two projects)
+Deploy the API and frontend as separate Vercel projects from the same GitHub repository.
 
 ### API project
 - Repository: `Saishashank2425/ClauseIQ`
-- Root Directory: repository root
-- Framework preset: Other (Python serverless function)
-- Production branch: the branch containing the backend and `api/index.py`
-- Deploy. Verify `/health` and `/docs`.
+- Root directory: repository root
+- Framework: Other
+- Production branch: `implementation-core`
+- The root `vercel.json` routes requests to `api/index.py`.
+- After deployment, check `/health` and `/docs`.
 
 ### Frontend project
 - Import the same repository as a second Vercel project.
-- Root Directory: `frontend`
-- Framework preset: Vite
-- Build command: `npm run build`
-- Output directory: `dist`
-- Environment variable: `VITE_API_BASE_URL=https://YOUR-API-PROJECT.vercel.app`
-- Redeploy after setting the variable.
+- Root directory: `frontend`
+- Framework preset: Vite; build command `npm run build`; output directory `dist`.
+- Set `VITE_API_BASE_URL` to the deployed API origin, for example `https://YOUR-API-PROJECT.vercel.app`.
+- Redeploy after setting the environment variable.
 
-The API currently enables wildcard CORS for a cookie-free public demo. Before production, restrict `allow_origins` to the exact frontend domain and add authentication, rate limits, malware scanning, and privacy controls.
+The API has permissive CORS for a cookie-free demo. Before production, replace wildcard CORS with the exact frontend origin. Vercel serverless request/runtime limits are stricter than the local 20 MB application limit (notably, request bodies around 4.5 MB can be rejected by the platform before FastAPI receives them). Do not use the serverless API for large contracts, OCR-heavy PDFs, or transformer inference.
+
+## Docker / persistent hosting
+```powershell
+docker compose up --build -d
+docker compose exec api alembic upgrade head
+```
+The API is available on port 8000. This is the preferred baseline for larger files and optional ML workloads. Configure secrets using the hosting provider's environment-variable manager, not committed files.
+
+## Environment variables
+See `.env.example`. Optional components:
+- `CLAUSEIQ_DENSE_MODEL`: sentence-transformer embedding model; requires `requirements-ml.txt`.
+- `CLAUSEIQ_CROSS_ENCODER_MODEL`: optional reranker; requires `requirements-ml.txt`.
+- `CLAUSEIQ_CLASSIFIER_BACKEND=legalbert`: load a locally fine-tuned Legal-BERT artifact.
+- `CLAUSEIQ_LLM_BASE_URL`, `CLAUSEIQ_LLM_MODEL`, `CLAUSEIQ_LLM_API_KEY`: optional OpenAI-compatible grounded generation endpoint.
 
 ## API
-- `GET /` and `GET /health`: service status
-- `POST /api/v1/analyze`: multipart `file` (PDF/DOCX), optional `enable_ocr`
-- `POST /api/v1/ask`: multipart `file` and `question`, optional `enable_ocr`
+- `GET /`, `GET /health`: service status.
+- `POST /api/v1/analyze`: multipart `file` (PDF/DOCX), optional query flags `enable_ocr` and `persist`.
+- `POST /api/v1/ask`: multipart `file` and `question`, optional query flag `enable_ocr`.
 
-OCR additionally requires the Tesseract executable installed on the backend host. OCR is not guaranteed to work on a serverless host without bundling the binary.
+OCR requires the Tesseract executable installed on the host. The Python package alone is not the OCR engine.
 
-## Important limitations
-- Risk flags are transparent phrase heuristics, not a trained legal classifier.
-- Q&A uses BM25 to retrieve source passages and returns evidence; it does not generate legal conclusions.
-- PDF page provenance is preserved. DOCX page numbers are unavailable through python-docx.
-- SQLAlchemy models are included as a persistence foundation; document persistence is not yet wired into the API.
-- Vercel serverless functions have execution and payload limits. Large contracts, OCR-heavy scans, model inference, and long-running jobs should move to a persistent backend/worker service.
+## Production checklist
+Authentication/authorization, tenant isolation, restrictive CORS, rate limiting, malware scanning, private object storage, audit logging, retention/deletion controls, secret rotation, database backups and expert-reviewed model evaluation are not included in this educational prototype.

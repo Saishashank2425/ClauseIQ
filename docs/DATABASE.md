@@ -1,15 +1,17 @@
 # Database setup
 
-Set `DATABASE_URL` in `.env` to a PostgreSQL SQLAlchemy URL, for example:
+Configure `DATABASE_URL` in `.env`:
 
 ```text
 postgresql+psycopg://USER:PASSWORD@HOST:5432/DATABASE
 ```
 
-Install requirements, then run:
+Apply versioned schema migrations:
 
 ```powershell
-python -m scripts.init_db
+alembic upgrade head
 ```
 
-The API's `POST /api/v1/analyze?persist=true` option stores a SHA-256 deduplicated document record and its extracted clauses. Do not enable persistence until the database is provisioned and access-controlled. This initial schema uses SQLAlchemy `create_all`; production deployments should move to versioned Alembic migrations.
+The `POST /api/v1/analyze?persist=true` option stores a SHA-256 deduplicated document record and its extracted clauses. Persistence is opt-in. Do not enable it until PostgreSQL is provisioned, access-controlled and backed up. The initial Alembic revision creates `documents` and `clauses`.
+
+The current prototype does not implement user accounts or tenant isolation. Do not store confidential third-party contracts in a publicly accessible demo.

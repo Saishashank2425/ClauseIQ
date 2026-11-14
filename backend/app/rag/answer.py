@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import time
 from typing import Any
 
 import httpx
@@ -63,15 +64,36 @@ def _generate_with_llm(question: str, evidence: list[dict]) -> tuple[str | None,
     }
 
     try:
-        response = httpx.post(
-            f"{base}/chat/completions",
-            json=payload,
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            timeout=httpx.Timeout(45.0, connect=10.0),
-        )
-        if response.is_error:
+        response = None
+        # Gemini can temporarily return 429/5xx while capacity is constrained.
+        # Retry a small, bounded number of times; never retry auth or bad-request errors.
+        for attempt in range(3):
+            response = httpx.post(
+                f"{base}/chat/completions",
+                json=payload,
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                timeout=httpx.Timeout(30.0, connect=10.0),
+            )
+            if response.status_code not in (429, 500, 502, 503, 504) or attempt == 2:
+                break
+            retry_after = response.headers.get("Retry-After", "")
+            try:
+                delay = min(max(float(retry_after), 0.5), 3.0) if retry_after else (1.0, 2.0)[attempt]
+            except ValueError:
+                delay = (1.0, 2.0)[attempt]
+            logger.warning(
+                "ClauseIQ LLM provider returned transient HTTP %s; retrying attempt %s/3 after %.1fs (model=%s)",
+                response.status_code, attempt + 2, delay, model,
+            )
+            time.sleep(delay)
+
+        if response is not None and response.is_error:
             # Never log request headers, API keys, prompts, or contract text.
-            logger.error("ClauseIQ LLM provider returned HTTP %s (model=%s)", response.status_code, model)
+            logger.error("ClauseIQ LLM provider returned HTTP %s after retries (model=%s)", response.status_code, model)
+            if response.status_code == 503:
+                return None, "llm_provider_overloaded"
+            if response.status_code == 429:
+                return None, "llm_rate_limited"
             return None, "llm_provider_error"
 
         data = response.json()
@@ -146,7 +168,9 @@ def answer_question(question: str, clauses: list[ClauseResult], top_k: int = 4) 
         "llm_not_configured": "AI answer generation is not configured. Retrieved contract evidence is shown below.",
         "llm_missing_api_key": "AI answer generation is missing its provider API key. Retrieved evidence is shown below.",
         "llm_timeout": "The AI provider timed out. Retrieved evidence is shown below; please retry.",
-        "llm_provider_error": "The AI provider rejected or could not process the request. Retrieved evidence is shown below; check the server logs.",
+        "llm_provider_error": "The AI provider could not process the request. Retrieved evidence is shown below; please retry.",
+        "llm_provider_overloaded": "Gemini is temporarily overloaded. ClauseIQ retried automatically, but the provider is still busy. Your retrieved evidence is shown below; please try again shortly.",
+        "llm_rate_limited": "Gemini rate-limited this request. Your retrieved evidence is shown below; please try again shortly.",
         "llm_invalid_citations": "The AI response did not pass citation validation. Retrieved evidence is shown below instead.",
     }
     answer = fallback_messages.get(

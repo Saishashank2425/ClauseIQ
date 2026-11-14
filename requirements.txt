@@ -19,3 +19,5 @@ psycopg[binary]>=3.2,<4.0
 # Quality
 pytest>=8.0
 httpx>=0.27
+
+# Optional model/retrieval stack added in later phases

@@ -19,10 +19,8 @@ def trace_observation(name: str, metadata: dict[str, Any] | None = None) -> Iter
         from langfuse import get_client
         client = get_client()
         safe_metadata = {str(k): str(v)[:180] for k, v in (metadata or {}).items() if v is not None}
-        observation = client.start_as_current_observation(as_type="span", name=name, metadata=safe_metadata)
+        with client.start_as_current_observation(as_type="span", name=name, metadata=safe_metadata) as span:
+            yield span
     except Exception as exc:
         logger.warning("Langfuse tracing unavailable (%s); continuing without tracing", type(exc).__name__)
         yield None
-        return
-    with observation as span:
-        yield span

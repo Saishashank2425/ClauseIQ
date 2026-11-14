@@ -11,8 +11,9 @@ ClauseIQ is a research prototype that extracts contract text, segments clauses, 
 - Trainable TF-IDF + LinearSVC baseline and optional Legal-BERT fine-tuning/inference.
 - BM25 + TF-IDF retrieval, optional FAISS dense embeddings and cross-encoder reranking.
 - Evidence-first Q&A with clause citation validation, extractive fallback and abstention.
-- React/Vite dashboard, FastAPI API and optional PostgreSQL persistence.
-- Alembic migration, Docker Compose, evaluation scripts and GitHub Actions CI.
+- React/Vite dashboard and FastAPI API.
+- PostgreSQL + pgvector schema for persistent clauses, embeddings, version history and tenant permissions.
+- SQL-first document authorization, saved-document APIs, Alembic migrations and Docker Compose.
 
 ## Quick start (Python 3.13)
 ```powershell
@@ -54,7 +55,7 @@ The analyze endpoint persists only when explicitly called with `?persist=true`.
 ```powershell
 docker compose up --build
 ```
-The compose file starts PostgreSQL and the API. Apply database migrations in the API container before using persistence.
+The compose file starts pgvector-enabled PostgreSQL and the API. Apply database migrations in the API container before using persistence.
 
 ## Deployment
 See `docs/DEPLOYMENT.md` for separate Vercel frontend/API setup and Docker hosting guidance.
@@ -66,7 +67,9 @@ See `docs/DEPLOYMENT.md` for separate Vercel frontend/API setup and Docker hosti
 - Grounded LLM generation is optional and requires an OpenAI-compatible endpoint configured via environment variables.
 - DOCX pagination is not reliably available through python-docx.
 - Vercel serverless is suitable only for small demo documents; large uploads, OCR and model inference should use persistent container/worker hosting.
-- Authentication, tenant isolation, malware scanning, production rate limiting and formal privacy controls must be added before handling confidential customer contracts.
+- The initial workspace is private to the verified Google subject. Team membership and per-document grants are database-backed, but a trusted team-administration UI/workflow is still required before enabling shared workspaces.
+- Embeddings are optional and require the sentence-transformers extra plus a configured 384-dimensional model. A pgvector column/index and authorized vector-search query are included; vector ranking is unavailable until embeddings have been generated.
+- Malware scanning, production rate limiting, restrictive CORS, audit logging, backups and formal privacy controls are still required before handling confidential customer contracts.
 
 ## Disclaimer
 ClauseIQ is an educational/research decision-support prototype, not legal advice. Outputs require review by qualified counsel.

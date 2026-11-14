@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FileUp, ShieldCheck, Search, AlertTriangle, FileText, LoaderCircle, Scale, ArrowUpRight } from "lucide-react";
-const API = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+const API = (import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? "http://127.0.0.1:8000" : "")).replace(/\/$/, "");
 export default function App() {
  const [file,setFile]=useState(null),[analysis,setAnalysis]=useState(null),[question,setQuestion]=useState(""),[answer,setAnswer]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[ocr,setOcr]=useState(false);
  async function analyze(){if(!file)return;setBusy(true);setError("");setAnalysis(null);setAnswer(null);const body=new FormData();body.append("file",file);try{const r=await fetch(API+"/api/v1/analyze?enable_ocr="+ocr,{method:"POST",body});const d=await r.json();if(!r.ok)throw new Error(d.detail||"Analysis failed");setAnalysis(d);}catch(e){setError(e.message+". Check the API URL and backend status.");}finally{setBusy(false);}}

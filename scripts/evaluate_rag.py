@@ -55,8 +55,12 @@ def summarize_results(rows: list[dict]) -> dict:
     def percentile(fraction: float):
         if not latencies:
             return None
-        index = max(0, min(len(latencies) - 1, int((len(latencies) - 1) * fraction + 0.5)))
-        return round(latencies[index], 2)
+        position = (len(latencies) - 1) * fraction
+        lower = int(position)
+        upper = min(lower + 1, len(latencies) - 1)
+        weight = position - lower
+        value = latencies[lower] + (latencies[upper] - latencies[lower]) * weight
+        return round(value, 2)
 
     def rate(field: str):
         return round(sum(bool(row.get(field)) for row in rows) / count, 4) if count else 0.0

@@ -20,3 +20,6 @@ scikit-learn>=1.5,<2.0
 joblib>=1.4,<2.0
 # Quality
 pytest>=8.0
+
+# Google Identity Services token verification
+google-auth>=2.35,<3.0

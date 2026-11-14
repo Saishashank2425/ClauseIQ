@@ -103,10 +103,14 @@ def test_golden_50_pipeline_retrieval_and_citation_gates(monkeypatch):
 
     monkeypatch.setattr("backend.app.rag.answer.generate", deterministic_cited_response)
     rows = []
+    retrieval_misses = []
     for case in cases:
         result = answer_question(case["question"], DEMO_CLAUSES, top_k=3)
+        scored = score_case(case, result)
+        if not scored["expected_source_retrieved"]:
+            retrieval_misses.append(case["id"])
         rows.append({
-            **score_case(case, result),
+            **scored,
             "mode": result.get("mode"),
             "latency_ms": result.get("latency_ms"),
             "provider": result.get("provider"),
@@ -115,7 +119,7 @@ def test_golden_50_pipeline_retrieval_and_citation_gates(monkeypatch):
 
     summary = summarize_results(rows)
     assert summary["case_count"] == 50
-    assert summary["expected_source_retrieval_recall"] == 1.0
+    assert summary["expected_source_retrieval_recall"] == 1.0, f"retrieval misses: {retrieval_misses}"
     assert summary["expected_source_citation_accuracy"] == 1.0
     assert summary["citation_syntax_accuracy"] == 1.0
     assert summary["abstention_rate"] == 0.0

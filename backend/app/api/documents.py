@@ -10,8 +10,8 @@ from backend.app.api.auth import require_user
 from backend.app.database.session import get_db
 from backend.app.models import ClauseRecord, DocumentRecord
 from backend.app.retrieval.authorized import (
-    authorized_clauses_query,
     authorized_documents_query,
+    search_authorized_hybrid,
 )
 from backend.app.rag.answer import answer_question
 from backend.app.schemas.analysis import ClauseResult
@@ -53,13 +53,15 @@ def get_document_clauses(
 ):
     """Fetch clauses only after tenant, role, direct ACL and version filters run in SQL."""
     rows = (
-        authorized_clauses_query(db, str(user["id"]))
-        .filter(DocumentRecord.id == document_id)
-        .order_by(ClauseRecord.id.asc())
-        .all()
+        search_authorized_hybrid(
+            db,
+            str(user["id"]),
+            query_text="contract clauses",
+            limit=50,
+            document_id=document_id,
+        )
     )
     if not rows:
-        # Do not reveal whether an inaccessible document ID exists.
         raise HTTPException(status_code=404, detail="Document not found.")
     return {
         "document_id": document_id,
@@ -84,16 +86,17 @@ def ask_saved_document(
     db: Session = Depends(get_db),
     user: dict = Depends(require_user),
 ):
-    """Run RAG only over clauses the caller is authorized to read."""
-    rows = (
-        authorized_clauses_query(db, str(user["id"]))
-        .filter(DocumentRecord.id == document_id)
-        .order_by(ClauseRecord.id.asc())
-        .all()
+    """Run hybrid RAG only over clauses the caller is authorized to read."""
+    rows = search_authorized_hybrid(
+        db,
+        str(user["id"]),
+        query_text=question,
+        limit=8,
+        document_id=document_id,
     )
     if not rows:
-        raise HTTPException(status_code=404, detail="Document not found.")
-
+        # Do not reveal whether an inaccessible document ID exists.
+        raise HTTPException(status_code=404, detail="Document not found or no matching evidence.")
     clauses = [
         ClauseResult(
             clause_id=row.clause_id,
